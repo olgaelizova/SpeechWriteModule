@@ -1,0 +1,245 @@
+	///// pishet v fail no neverno, fail ne vosproizvoditsya
+	WAVEFORMATEX pFormat;
+	pFormat.wFormatTag = WAVE_FORMAT_PCM;     // simple, uncompressed format
+	pFormat.nChannels = 1;                    //  1=mono, 2=stereo
+	pFormat.wBitsPerSample = 16;              //  16 for high quality, 8 for telephone-grade
+	pFormat.nSamplesPerSec = sampleRate;
+	pFormat.nAvgBytesPerSec = sampleRate * pFormat.nChannels * pFormat.wBitsPerSample / 8;
+	pFormat.nBlockAlign = pFormat.nChannels * pFormat.wBitsPerSample / 8;
+	pFormat.cbSize = 0;
+
+	HWAVEIN hWaveIn;
+	WAVEHDR waveInHdr;
+
+	waveInOpen(&hWaveIn, WAVE_MAPPER, &pFormat, 0L, 0L, WAVE_FORMAT_DIRECT);
+
+	waveInHdr.lpData = (LPSTR)waveIn;
+	waveInHdr.dwBufferLength = NUMPTS * 2;
+	waveInHdr.dwBytesRecorded = 0;
+	waveInHdr.dwUser = 0L;
+	waveInHdr.dwFlags = 0L;
+	waveInHdr.dwLoops = 0L;
+
+	waveInPrepareHeader(hWaveIn, &waveInHdr, sizeof(WAVEHDR));
+
+	waveInAddBuffer(hWaveIn, &waveInHdr, sizeof(WAVEHDR));
+
+	waveInStart(hWaveIn);
+
+	// Wait until finished recording
+	do{} while (waveInUnprepareHeader(hWaveIn, &waveInHdr, sizeof(WAVEHDR)) == WAVERR_STILLPLAYING);
+
+	waveInClose(hWaveIn);
+
+	//сохраняем записанный файл
+/*	struct WAVHEADER
+	{
+		char chunkId[4];
+		unsigned long chunkSize;
+		char format[4];
+		char subchunk1Id[4];
+
+		unsigned long subchunk1Size;
+		unsigned short audioFormat;
+		unsigned short numChannels;
+		unsigned long sampleRate;
+		unsigned long byteRate;
+		unsigned short blockAlign;
+		unsigned short bitsPerSample;
+		char subchunk2Id[4];
+		unsigned long subchunk2Size;
+
+	}header;
+*/
+
+	/// TODO write on file
+
+/*	header.subchunk2Size = sizeof(waveIn);
+	header.chunkId[4] = *"RIFF";
+	header.chunkSize = header.subchunk2Size + 136;
+	header.format[4] = *"WAVE";
+	header.subchunk1Id[4] = *"fmt ";
+	header.subchunk1Size = 16;
+	header.audioFormat = pFormat.wFormatTag;
+	header.sampleRate = sampleRate;
+	header.bitsPerSample = pFormat.wBitsPerSample;
+	header.numChannels = pFormat.nChannels;
+	header.byteRate = pFormat.nAvgBytesPerSec;
+
+	header.blockAlign = pFormat.nBlockAlign;
+	header.subchunk2Id[4] = *"data";
+*/
+	header.subchunk2Size = sizeof(waveIn);
+	header.chunkId[0] = 'R';
+	header.chunkId[1] = 'I';
+	header.chunkId[2] = 'F';
+	header.chunkId[3] = 'F';
+	header.chunkSize = header.subchunk2Size + 136;
+	header.format[0] = 'W';
+	header.format[1] = 'A';
+	header.format[2] = 'W';
+	header.format[3] = 'E';
+	header.subchunk1Id[0] = 'f';
+	header.subchunk1Id[1] = 'm';
+	header.subchunk1Id[2] = 't';
+	header.subchunk1Id[3] = ' ';
+	header.subchunk1Size = 16;
+	header.audioFormat = pFormat.wFormatTag;
+	header.sampleRate = sampleRate;
+	header.bitsPerSample = pFormat.wBitsPerSample;
+	header.numChannels = pFormat.nChannels;
+	header.byteRate = pFormat.nAvgBytesPerSec;
+
+	header.blockAlign = pFormat.nBlockAlign;
+	header.subchunk2Id[0] = 'd';
+	header.subchunk2Id[1] = 'a';
+	header.subchunk2Id[2] = 't';
+	header.subchunk2Id[3] = 'a';
+
+//	header.fLen = sizeof(waveIn);
+//	header.rId[0] = 'R';
+//	header.rId[1] = 'I';
+//	header.rId[2] = 'F';
+//	header.rId[3] = 'F';
+//	header.chunkSize = header.subchunk2Size + 136;
+//	chunk.size = header.nBlockAlign + 28;
+/*	header.fId = *"WAVE";
+	header.subchunk1Id[4] = *"fmt ";
+	header.subchunk1Size = 16;
+	header.audioFormat = pFormat.wFormatTag;
+	header.sampleRate = sampleRate;
+	header.bitsPerSample = pFormat.wBitsPerSample;
+	header.numChannels = pFormat.nChannels;
+	header.byteRate = pFormat.nAvgBytesPerSec;
+
+	header.blockAlign = pFormat.nBlockAlign;
+	header.subchunk2Id[4] = *"data";
+*/
+	
+	FILE* pf; 
+	fopen_s(&pf, "zap1.wav", "wb");
+	//fwrite((HPSTR)&header, sizeof(WAVHEADER), 1, pf);
+	fwrite((HPSTR)&header, sizeof(header), 1, pf);
+	//fwrite((HPSTR)waveIn, 2, sizeof(waveIn), pf);
+	fwrite((HPSTR)waveIn, 1, sizeof(waveIn), pf);
+	fclose(pf);
+
+	//WAVHEADER header;
+	//вывод всех параметров записи
+	FILE *file;
+	errno_t err;
+	err = fopen_s(&file, "zap1.wav", "rb");
+
+	if (err)
+	{
+		printf_s("Failed open file, error %d", err);
+	}
+
+	fread_s(&header, sizeof(WAVHEADER), sizeof(WAVHEADER), 1, file);
+	printf_s("chunkid %s\n", header.chunkId);
+	printf_s("chunksize %d\n", header.chunkSize);
+	printf_s("format %s\n", header.format);
+	printf_s("subchunk1id %s\n", header.subchunk1Id);
+	printf_s("subchunk1size: %d\n", header.subchunk1Size);
+	printf_s("audioformat: %d\n", header.audioFormat);
+	printf_s("blockalign: %d\n", header.blockAlign);
+	printf_s("subchunk2Id: %s\n", header.subchunk2Id);
+	printf_s("subchunk2size: %d\n", header.subchunk2Size);
+	printf_s("Sample rate: %d\n", header.sampleRate);
+	printf_s("Channels: %d\n", header.numChannels);
+	printf_s("Bits per sample: %d\n", header.bitsPerSample);
+	printf_s("Byterate %d\n", header.byteRate);
+
+/*	fread_s(&header, sizeof(header), sizeof(header), 1, file);
+	printf_s("chunksize %d\n", chunk.size);
+	printf_s("format %s\n", header.fId);
+*/
+	fclose(file);
+
+	//const char* fullpath = "C:\\Users\\ElizovaOlga\\Desktop\\test_voisewrite\\zap1.wav";
+	//const char* fullpath = "C:\\test\\wavfiles\\mashtab_wav.wav";
+	//int samples_count = 0;
+
+	//wavread(fullpath, samples_count);
+
+	////// repeat voice record
+/*	HWAVEOUT hWaveOut;
+	WAVEHDR WaveOutHdr;
+
+	waveOutOpen(&hWaveOut, WAVE_MAPPER, &pFormat, 0L, 0L, WAVE_FORMAT_DIRECT);
+
+	WaveOutHdr.lpData = (LPSTR)waveIn;
+	WaveOutHdr.dwBufferLength = NUMPTS * 2;
+	WaveOutHdr.dwBytesRecorded = 0;
+	WaveOutHdr.dwUser = 0L;
+	WaveOutHdr.dwFlags = 0L;
+	WaveOutHdr.dwLoops = 1L;
+
+	waveOutPrepareHeader(hWaveOut, &WaveOutHdr, sizeof(WAVEHDR));
+
+	waveOutSetVolume(hWaveOut, 0xFFFFFFFF);
+
+	waveOutWrite(hWaveOut, &WaveOutHdr, sizeof(WAVEHDR));
+
+	waveOutClose(hWaveOut);
+	//////
+*/
+	system("pause");
+
+//// rabotaet no ne pishet v fail
+	/*	
+	WAVEFORMATEX pFormat;
+	pFormat.wFormatTag = WAVE_FORMAT_PCM;     // simple, uncompressed format
+	pFormat.nChannels = 2;                    //  1=mono, 2=stereo
+	pFormat.wBitsPerSample = 16;              //  16 for high quality, 8 for telephone-grade
+	pFormat.nSamplesPerSec = sampleRate;
+	pFormat.nAvgBytesPerSec = sampleRate * pFormat.nChannels * pFormat.wBitsPerSample / 8;
+	pFormat.nBlockAlign = pFormat.nChannels * pFormat.wBitsPerSample / 8;
+	pFormat.cbSize = 0;
+
+	HWAVEIN hWaveIn;
+	WAVEHDR waveInHdr;
+
+	waveInOpen(&hWaveIn, WAVE_MAPPER, &pFormat, 0L, 0L, WAVE_FORMAT_DIRECT);
+
+	//waveInHdr.lpData = (LPSTR)waveIn;
+	waveInHdr.lpData = (LPSTR)waveIn;
+	waveInHdr.dwBufferLength = NUMPTS * 2;
+	waveInHdr.dwBytesRecorded = 0;
+	waveInHdr.dwUser = 0L;
+	waveInHdr.dwFlags = 0L;
+	waveInHdr.dwLoops = 0L;
+
+	waveInPrepareHeader(hWaveIn, &waveInHdr, sizeof(WAVEHDR));
+
+	waveInAddBuffer(hWaveIn, &waveInHdr, sizeof(WAVEHDR));
+
+	waveInStart(hWaveIn);
+
+	// Wait until finished recording
+	do{} while (waveInUnprepareHeader(hWaveIn, &waveInHdr, sizeof(WAVEHDR)) == WAVERR_STILLPLAYING);
+
+	waveInClose(hWaveIn);
+
+	HWAVEOUT hWaveOut;
+	WAVEHDR WaveOutHdr;
+
+	waveOutOpen(&hWaveOut, WAVE_MAPPER, &pFormat, 0L, 0L, WAVE_FORMAT_DIRECT);
+
+	WaveOutHdr.lpData = (LPSTR)waveIn;
+	WaveOutHdr.dwBufferLength = NUMPTS * 2;
+	WaveOutHdr.dwBytesRecorded = 0;
+	WaveOutHdr.dwUser = 0L;
+	WaveOutHdr.dwFlags = 0L;
+	WaveOutHdr.dwLoops = 1L;
+
+	waveOutPrepareHeader(hWaveOut, &WaveOutHdr, sizeof(WAVEHDR));
+
+	waveOutSetVolume(hWaveOut, 0xFFFFFFFF);
+
+	waveOutWrite(hWaveOut, &WaveOutHdr, sizeof(WAVEHDR));
+
+	waveOutClose(hWaveOut);
+
+	system("pause");
+	*/

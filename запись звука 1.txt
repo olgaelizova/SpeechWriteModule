@@ -1,0 +1,144 @@
+#include <fmx.h>
+#pragma hdrstop
+ 
+#include "Unit1.h"
+#include "mmsystem.h"
+#include "math.h"
+#include "Mmreg.h"
+#include "Windows.h"
+//---------------------------------------------------------------------------
+#pragma package(smart_init)
+#pragma resource "*.fmx"
+TForm1 *Form1;
+ 
+const maxbuf=44100*20;
+THandle hDevice;
+HWAVEOUT hDevice1;
+char buf[maxbuf-1];
+ 
+int razmerBuf=0;
+ 
+//------------------------------------------------------------
+ int TForm1::CalcCycles(){
+    const epsilon=0.01;
+    double f,n,dn;
+    int ni;
+    f=10000;//f=GetValue;
+    n=44100/f; dn=n;
+    ni=1;
+    while ((abs(ceil(n)-n)>epsilon) && (ni<100)) {
+      ni++;
+      n=n+dn;
+    }
+    return ceil(n);
+  }
+//------------------------------------------------------------
+void TForm1::ProgramDevice(){
+ // const hdr:TWaveHdr=();
+  WAVEHDR hdr;
+  int  i,err;
+  double v;
+ 
+ 
+  err=waveOutReset(hDevice1);
+  hdr.lpData=buf;
+  hdr.dwBufferLength=CalcCycles()*2;
+  hdr.dwFlags=WHDR_BEGINLOOP || WHDR_ENDLOOP;
+  hdr.dwLoops=100000000;
+ 
+ 
+ // v=2*PI*GetValue/44100;
+ v=2*3.14*10/44100;
+  razmerBuf =hdr.dwBufferLength/2;
+//  for (int i=0; i<hdr.dwBufferLength/2;i++)
+//  buf[i]=ceil(32700*sin(i*v));
+ for (int i=0; i<hdr.dwBufferLength/2;i++)
+   buf[i]=1;
+ 
+  err=waveOutPrepareHeader(hDevice1,&hdr,sizeof(hdr));
+  err=waveOutWrite(hDevice1,&hdr,sizeof(hdr));
+  }
+//------------------------------------------------------------
+void TForm1::ShowSignal(){
+    Chart1->Series[0]->Clear();
+  for (int i=0; i<razmerBuf;i++)
+    Chart1->Series[0]->AddY(buf[i]);
+ 
+}
+//------------------------------------------------------------
+ 
+void TForm1::start(){
+//TWaveFormatEx wfe;
+WAVEFORMATEX wfe;
+int  err;
+ 
+wfe.wFormatTag=WAVE_FORMAT_PCM;
+wfe.nChannels=1;
+wfe.nSamplesPerSec=44100;
+wfe.nBlockAlign=2;
+wfe.wBitsPerSample=16;
+wfe.nAvgBytesPerSec=wfe.nSamplesPerSec*wfe.nBlockAlign;
+wfe.cbSize=0;
+ 
+//LPHWAVEOUT
+err=waveOutOpen(&hDevice1,WAVE_MAPPER,&wfe,(DWORD)Form1->Handle,0,CALLBACK_WINDOW);
+ 
+ 
+if (err != MMSYSERR_NOERROR){
+ShowMessage("Не могу открыть аудиоустройство!");
+exit(0);
+}
+// while(Form1->btnStart->Text!="Стоп")
+ 
+ 
+ 
+}
+ 
+//------------------------------------------------------------
+ 
+void TForm1::stop(){
+  waveOutReset(hDevice1);
+  waveOutClose(hDevice1);
+}
+ 
+ 
+ 
+//---------------------------------------------------------------------------
+__fastcall TForm1::TForm1(TComponent* Owner)
+    : TForm(Owner)
+{
+}
+//---------------------------------------------------------------------------
+void __fastcall TForm1::btnStartClick(TObject *Sender)
+{
+ if (btnStart->Text=="Старт"){
+ start();
+ btnStart->Text="Стоп";
+ Timer1->Enabled =true;
+ }
+ else {
+ stop();
+ btnStart->Text="Старт";
+ Timer1->Enabled =false;
+ }
+}
+//---------------------------------------------------------------------------
+void __fastcall TForm1::FormCreate(TObject *Sender)
+{
+cbSignalType->Items->Add("1. Синусоидальный");
+cbSignalType->Items->Add("2. Прямоугольный");
+cbSignalType->Items->Add("3. Пилообразный");
+cbSignalType->Items->Add("4. Прямая линия");
+}
+//---------------------------------------------------------------------------
+void __fastcall TForm1::Timer1Timer(TObject *Sender)
+{
+  ProgramDevice();
+  ShowSignal();
+}
+//---------------------------------------------------------------------------
+ 
+void __fastcall TForm1::FormClose(TObject *Sender, TCloseAction &Action)
+{
+stop();
+}

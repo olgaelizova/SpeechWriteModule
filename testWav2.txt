@@ -1,0 +1,98 @@
+#include <windows.h>
+#include <math.h>
+#include <Mmsystem.h>
+#include <Mmreg.h>
+ 
+#include <conio.h>
+#include <stdio.h>
+ 
+ 
+#pragma comment(lib, "winmm.lib")
+ 
+struct WAVHEADER
+{
+    FOURCC  sigRIFF;     // должно быть равно "RIFF"
+    DWORD   sizeRIFFch;  // размер чанка RIFF
+ 
+    FOURCC  sigWAVE;     // должно быть равно "WAVE"
+ 
+    FOURCC  sigFMT;      // должно быть равно "fmt "
+    DWORD   sizeFMTch;   // размер чанка FMT
+    PCMWAVEFORMAT pcmwf;
+ 
+    FOURCC  sigDATA;     // должно быть равно "data"
+    DWORD   sizeDATAch;  // размер data-чанка
+};
+ 
+DWORD dwFrequency = 1000;
+ 
+BYTE *buff = NULL;
+ 
+void Play(){
+  if(!dwFrequency || dwFrequency>44100)
+    return;
+ 
+  // длина дорожки в байтах
+  DWORD numSamples = 44100 / dwFrequency;
+  
+  // выделяем память под дорожку - в байтах!
+  DWORD size = sizeof(WAVHEADER) + numSamples * sizeof(SHORT); //  размер структуры + количество выборок
+  buff = new BYTE[size];  
+  
+  // заполняем WAV-header
+  WAVHEADER *head = (WAVHEADER*)buff;            
+ 
+ 
+  head->sigRIFF = mmioFOURCC('R','I', 'F', 'F');
+  head->sizeRIFFch = size - 8;
+ 
+  head->sigWAVE = mmioFOURCC('W','A', 'V', 'E');
+ 
+ 
+  head->sigFMT = mmioFOURCC('f', 'm', 't', ' ');
+ 
+  head->sizeFMTch = sizeof(PCMWAVEFORMAT);
+ 
+  head->pcmwf.wf.wFormatTag = WAVE_FORMAT_PCM;
+  head->pcmwf.wf.nChannels = 1;                         //   моно  
+  head->pcmwf.wf.nSamplesPerSec = 44100;                    // частота дискретизации  
+  head->pcmwf.wf.nAvgBytesPerSec = 44100*2;                 // скорость передачи данных, байт/с
+  head->pcmwf.wf.nBlockAlign = 2;                        // 2 байта для представления одного отсчета
+  head->pcmwf.wBitsPerSample = 16;                     // разрядность 16 бит
+ 
+ 
+  head->sigDATA = mmioFOURCC('d', 'a', 't', 'a');
+  head->sizeDATAch = numSamples * sizeof(SHORT);
+ 
+ 
+  // заполняем дорожку периодом синуса
+  SHORT *samples = (SHORT*)(head + 1);
+    for(int i = 0; i < numSamples; i++)
+      samples[i] = SHORT(10000 * sin(6.28*double(i)/double(numSamples) ) );
+ 
+ // DEBUG :)
+ // FILE *out = fopen("test.wav", "wb");
+ // fwrite(buff, 1, size, out);
+ // fclose(out);
+ 
+  // воспроизводим звук  
+  PlaySound((LPCSTR)buff,0,SND_ASYNC|SND_LOOP|SND_MEMORY);
+}
+ 
+void Stop()
+{
+  // станавливаем звук по нажатию кнопки
+  PlaySound(0, 0, SND_ASYNC);
+}
+ 
+ 
+void main(void){
+  Play();
+ 
+  getch();
+ 
+  Stop();
+ 
+  // тоже по-хорошему не нужно забывать ;)
+  delete[] buff;
+}
