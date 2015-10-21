@@ -6,7 +6,7 @@
 #include <vector>
 #include <bitset>
 
-//TODO: Проверить очистку памяти
+//TODO: Проверить очистку памяти 
 
 class Chunk {
 public:
